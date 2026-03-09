@@ -24,7 +24,7 @@ export function runSciSimulation(input: SciInput): SciResult {
   let cumulIS = 0;
   const partRatio = input.partsSCI / 100;
 
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 5; i++) {
     const croissance = Math.pow(1 + input.tauxCroissance / 100, i);
     const loyers = Math.round(input.loyersAnnuels * croissance);
 

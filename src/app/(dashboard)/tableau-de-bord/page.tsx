@@ -13,6 +13,8 @@ import {
   Building2,
   Car,
   Network,
+  Landmark,
+  SlidersHorizontal,
 } from "lucide-react";
 import {
   Card,
@@ -42,7 +44,7 @@ const simulators = [
   {
     href: "/simulateur/is-vs-ir",
     title: "IS vs IR",
-    description: "Simulation sur 3 ans",
+    description: "Simulation sur 5 ans",
     icon: TrendingUp,
   },
   {
@@ -63,6 +65,18 @@ const simulators = [
     description: "Régime mère-fille",
     icon: Network,
   },
+  {
+    href: "/simulateur/plus-value-cession",
+    title: "Plus-value de cession",
+    description: "Flat tax vs barème",
+    icon: Landmark,
+  },
+  {
+    href: "/simulateur/optimisation-remuneration",
+    title: "Optimisation rémunération",
+    description: "Salaire vs dividendes optimal",
+    icon: SlidersHorizontal,
+  },
 ];
 
 const TYPE_LABELS: Record<string, string> = {
@@ -72,6 +86,8 @@ const TYPE_LABELS: Record<string, string> = {
   sci: "SCI",
   vehicule: "Véhicule",
   holding: "Holding",
+  plus_value: "Plus-value",
+  opt_remuneration: "Opt. rémunération",
 };
 
 interface Stats {
@@ -106,13 +122,13 @@ function getResultLabel(sim: RecentSim): string {
   if (sim.type === "is_vs_ir") {
     const d = r as { regimeRecommande?: string; economie?: number };
     return d.regimeRecommande
-      ? `${d.regimeRecommande} — ${formatCurrency(d.economie ?? 0)} sur 3 ans`
+      ? `${d.regimeRecommande} — ${formatCurrency(d.economie ?? 0)} sur 5 ans`
       : "";
   }
   if (sim.type === "sci") {
     const d = r as { regimeRecommande?: string; economie?: number };
     return d.regimeRecommande
-      ? `SCI ${d.regimeRecommande} — ${formatCurrency(d.economie ?? 0)} sur 3 ans`
+      ? `SCI ${d.regimeRecommande} — ${formatCurrency(d.economie ?? 0)} sur 5 ans`
       : "";
   }
   if (sim.type === "vehicule") {
@@ -125,6 +141,18 @@ function getResultLabel(sim: RecentSim): string {
     const d = r as { recommandation?: string; economie?: number };
     return d.recommandation
       ? `${d.recommandation === "avec_holding" ? "Holding" : "Direct"} — ${formatCurrency(d.economie ?? 0)}`
+      : "";
+  }
+  if (sim.type === "plus_value") {
+    const d = r as { recommandation?: string; economie?: number };
+    return d.recommandation
+      ? `${d.recommandation === "flat_tax" ? "Flat tax" : "Barème"} — ${formatCurrency(d.economie ?? 0)}`
+      : "";
+  }
+  if (sim.type === "opt_remuneration") {
+    const d = r as { optimal?: { revenuNetTotal?: number }; economieVsToutSalaire?: number };
+    return d.optimal
+      ? `Revenu optimal: ${formatCurrency(d.optimal.revenuNetTotal ?? 0)}`
       : "";
   }
   return "";

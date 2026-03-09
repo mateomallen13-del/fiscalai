@@ -57,6 +57,7 @@ export interface IRResult {
   tauxMoyen: number;
   tauxMarginal: number;
   detailParTranche: IRDetail[];
+  reductionQuotient: number; // savings from quotient familial vs 1 part
 }
 
 export interface ISResult {
@@ -175,12 +176,24 @@ export interface IsIrAnnee {
   avantageIS: number;
 }
 
+export interface OptimalSplitPoint {
+  salaireBrut: number;
+  dividendes: number;
+  chargesSociales: number;
+  ir: number;
+  flatTax: number;
+  is: number;
+  revenuNet: number;
+}
+
 export interface IsIrResult {
   annees: IsIrAnnee[];
   cumulIS: number;
   cumulIR: number;
   regimeRecommande: "IS" | "IR";
   economie: number;
+  optimalSplit: OptimalSplitPoint; // optimal salary vs dividends
+  splitCurve: OptimalSplitPoint[]; // curve data for chart
 }
 
 // --- SCI Simulator ---
@@ -309,4 +322,70 @@ export interface HoldingResult {
   economie: number;
   recommandation: "sans_holding" | "avec_holding";
   raisons: string[];
+}
+
+// --- Capital Gains (Plus-Value Cession) ---
+
+export type StructureJuridique = "SARL" | "SAS" | "SCI" | "EURL";
+
+export interface PlusValueInput {
+  prixAcquisition: number;
+  prixCession: number;
+  dureeDetention: number; // years
+  structure: StructureJuridique;
+  departRetraite: boolean;
+  isPME: boolean; // PME < 10M€ CA
+  situationFamiliale: SituationFamiliale;
+}
+
+export interface PlusValueScenario {
+  label: string;
+  plusValueBrute: number;
+  abattement: number;
+  tauxAbattement: number;
+  plusValueImposable: number;
+  impot: number;
+  prelevementsSociaux: number;
+  abattementRetraite: number;
+  netApresImpot: number;
+}
+
+export interface PlusValueResult {
+  plusValueBrute: number;
+  flatTax: PlusValueScenario;
+  bareme: PlusValueScenario;
+  recommandation: "flat_tax" | "bareme";
+  economie: number;
+  exonerationPME: boolean;
+  exonerationMontant: number;
+}
+
+// --- Optimal Remuneration ---
+
+export interface OptRemunerationInput {
+  beneficeSociete: number;
+  revenuCibleNet: number;
+  situationFamiliale: SituationFamiliale;
+}
+
+export interface OptRemunerationPoint {
+  salaireBrut: number;
+  salaireNet: number;
+  chargesSociales: number;
+  ir: number;
+  dividendesBruts: number;
+  flatTax: number;
+  dividendesNets: number;
+  is: number;
+  revenuNetTotal: number;
+  coutEntreprise: number;
+}
+
+export interface OptRemunerationResult {
+  optimal: OptRemunerationPoint;
+  toutSalaire: OptRemunerationPoint;
+  toutDividendes: OptRemunerationPoint;
+  courbe: OptRemunerationPoint[];
+  economieVsToutSalaire: number;
+  economieVsToutDividendes: number;
 }

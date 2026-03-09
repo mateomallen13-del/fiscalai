@@ -6,6 +6,8 @@ import type {
   SciResult,
   VehiculeResult,
   HoldingResult,
+  PlusValueResult,
+  OptRemunerationResult,
 } from "@/lib/fiscal/types";
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -16,7 +18,9 @@ export type PdfData =
   | { type: "comparateur_statuts"; result: StatutsResult }
   | { type: "sci"; result: SciResult }
   | { type: "vehicule"; result: VehiculeResult }
-  | { type: "holding"; result: HoldingResult };
+  | { type: "holding"; result: HoldingResult }
+  | { type: "plus_value"; result: PlusValueResult }
+  | { type: "opt_remuneration"; result: OptRemunerationResult };
 
 interface PdfOptions {
   branding?: BrandingConfig;
@@ -448,8 +452,8 @@ function renderIsIr(
 
   // Summary cards
   drawMetricCard(pdf, margin, y, cardWidth, "Regime recommande", result.regimeRecommande === "IS" ? "Impot Societes" : "Impot Revenu", accent);
-  drawMetricCard(pdf, margin + cardWidth + 6, y, cardWidth, "Cumul IS (3 ans)", fmtCurrency(result.cumulIS), accent);
-  drawMetricCard(pdf, margin + (cardWidth + 6) * 2, y, cardWidth, "Cumul IR (3 ans)", fmtCurrency(result.cumulIR), accent);
+  drawMetricCard(pdf, margin + cardWidth + 6, y, cardWidth, "Cumul IS (5 ans)", fmtCurrency(result.cumulIS), accent);
+  drawMetricCard(pdf, margin + (cardWidth + 6) * 2, y, cardWidth, "Cumul IR (5 ans)", fmtCurrency(result.cumulIR), accent);
   y += 24;
 
   // Recommendation banner
@@ -459,7 +463,7 @@ function renderIsIr(
   pdf.setTextColor(22, 101, 52);
   pdf.setFont("helvetica", "bold");
   pdf.text(
-    `${result.regimeRecommande} recommande — Economie de ${fmtCurrency(result.economie)} sur 3 ans`,
+    `${result.regimeRecommande} recommande — Economie de ${fmtCurrency(result.economie)} sur 5 ans`,
     margin + 4,
     y + 6.5
   );
@@ -714,8 +718,8 @@ function renderSci(
   const cardWidth = (pdfWidth - margin * 2 - 12) / 3;
 
   drawMetricCard(pdf, margin, y, cardWidth, "Regime recommande", `SCI ${result.regimeRecommande}`, accent);
-  drawMetricCard(pdf, margin + cardWidth + 6, y, cardWidth, "Cumul IR (3 ans)", fmtCurrency(result.cumulIR), accent);
-  drawMetricCard(pdf, margin + (cardWidth + 6) * 2, y, cardWidth, "Cumul IS (3 ans)", fmtCurrency(result.cumulIS), accent);
+  drawMetricCard(pdf, margin + cardWidth + 6, y, cardWidth, "Cumul IR (5 ans)", fmtCurrency(result.cumulIR), accent);
+  drawMetricCard(pdf, margin + (cardWidth + 6) * 2, y, cardWidth, "Cumul IS (5 ans)", fmtCurrency(result.cumulIS), accent);
   y += 24;
 
   pdf.setFillColor(220, 252, 231);
@@ -723,7 +727,7 @@ function renderSci(
   pdf.setFontSize(9);
   pdf.setTextColor(22, 101, 52);
   pdf.setFont("helvetica", "bold");
-  pdf.text(`SCI ${result.regimeRecommande} recommande — Economie de ${fmtCurrency(result.economie)} sur 3 ans`, margin + 4, y + 6.5);
+  pdf.text(`SCI ${result.regimeRecommande} recommande — Economie de ${fmtCurrency(result.economie)} sur 5 ans`, margin + 4, y + 6.5);
   y += 16;
 
   y = drawSectionTitle(pdf, "Detail annee par annee", y, accent, margin);
@@ -867,6 +871,128 @@ function renderHolding(
   return y;
 }
 
+// ── Plus-Value Renderer ─────────────────────────────────────────────────
+
+function renderPlusValue(
+  pdf: JsPDFInstance,
+  result: PlusValueResult,
+  accent: [number, number, number],
+  startY: number,
+  margin: number,
+  pdfWidth: number,
+  pdfHeight: number
+): number {
+  let y = startY;
+  const cardWidth = (pdfWidth - margin * 2 - 12) / 3;
+
+  drawMetricCard(pdf, margin, y, cardWidth, "Recommandation", result.recommandation === "flat_tax" ? "Flat Tax (30%)" : "Bareme progressif", accent);
+  drawMetricCard(pdf, margin + cardWidth + 6, y, cardWidth, "Plus-value brute", fmtCurrency(result.plusValueBrute), accent);
+  drawMetricCard(pdf, margin + (cardWidth + 6) * 2, y, cardWidth, "Economie", fmtCurrency(result.economie), accent);
+  y += 24;
+
+  pdf.setFillColor(220, 252, 231);
+  pdf.roundedRect(margin, y, pdfWidth - margin * 2, 10, 2, 2, "F");
+  pdf.setFontSize(9);
+  pdf.setTextColor(22, 101, 52);
+  pdf.setFont("helvetica", "bold");
+  pdf.text(
+    `${result.recommandation === "flat_tax" ? "Flat tax" : "Bareme"} recommande — Economie de ${fmtCurrency(result.economie)}`,
+    margin + 4,
+    y + 6.5
+  );
+  y += 16;
+
+  y = drawSectionTitle(pdf, "Comparaison Flat Tax vs Bareme", y, accent, margin);
+  const colW = (pdfWidth - margin * 2 - 4) / 3;
+  const columns: TableColumn[] = [
+    { label: "Poste", width: colW, align: "left" },
+    { label: "Flat Tax (30%)", width: colW, align: "right" },
+    { label: "Bareme progressif", width: colW, align: "right" },
+  ];
+
+  const ft = result.flatTax;
+  const ba = result.bareme;
+  const rows: TableRow[] = [
+    { cells: ["Plus-value brute", fmtCurrency(ft.plusValueBrute), fmtCurrency(ba.plusValueBrute)] },
+    { cells: ["Abattement", fmtCurrency(ft.abattement), fmtCurrency(ba.abattement)] },
+    { cells: ["Taux abattement", fmtPercent(ft.tauxAbattement), fmtPercent(ba.tauxAbattement)] },
+    { cells: ["Plus-value imposable", fmtCurrency(ft.plusValueImposable), fmtCurrency(ba.plusValueImposable)] },
+    { cells: ["Abattement retraite", fmtCurrency(ft.abattementRetraite), fmtCurrency(ba.abattementRetraite)] },
+    { cells: ["Impot", fmtCurrency(ft.impot), fmtCurrency(ba.impot)] },
+    { cells: ["Prelevements sociaux", fmtCurrency(ft.prelevementsSociaux), fmtCurrency(ba.prelevementsSociaux)] },
+    { cells: ["Net apres impot", fmtCurrency(ft.netApresImpot), fmtCurrency(ba.netApresImpot)], bold: true, highlight: true },
+  ];
+
+  y = drawTable(pdf, y, columns, rows, accent, margin, pdfWidth, pdfHeight);
+
+  if (result.exonerationPME) {
+    y += 6;
+    pdf.setFillColor(254, 243, 199);
+    pdf.roundedRect(margin, y, pdfWidth - margin * 2, 10, 2, 2, "F");
+    pdf.setFontSize(8);
+    pdf.setTextColor(146, 64, 14);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`Exoneration PME applicable : ${fmtCurrency(result.exonerationMontant)}`, margin + 4, y + 6.5);
+    y += 14;
+  }
+
+  return y;
+}
+
+// ── Opt Remuneration Renderer ───────────────────────────────────────────
+
+function renderOptRemuneration(
+  pdf: JsPDFInstance,
+  result: OptRemunerationResult,
+  accent: [number, number, number],
+  startY: number,
+  margin: number,
+  pdfWidth: number,
+  pdfHeight: number
+): number {
+  let y = startY;
+  const cardWidth = (pdfWidth - margin * 2 - 12) / 3;
+  const { optimal, toutSalaire, toutDividendes } = result;
+
+  drawMetricCard(pdf, margin, y, cardWidth, "Salaire optimal", fmtCurrency(optimal.salaireBrut), accent);
+  drawMetricCard(pdf, margin + cardWidth + 6, y, cardWidth, "Dividendes optimaux", fmtCurrency(optimal.dividendesBruts), accent);
+  drawMetricCard(pdf, margin + (cardWidth + 6) * 2, y, cardWidth, "Revenu net optimal", fmtCurrency(optimal.revenuNetTotal), accent);
+  y += 24;
+
+  pdf.setFillColor(220, 252, 231);
+  pdf.roundedRect(margin, y, pdfWidth - margin * 2, 10, 2, 2, "F");
+  pdf.setFontSize(9);
+  pdf.setTextColor(22, 101, 52);
+  pdf.setFont("helvetica", "bold");
+  pdf.text(
+    `Economie vs tout salaire : ${fmtCurrency(result.economieVsToutSalaire)} | vs tout dividendes : ${fmtCurrency(result.economieVsToutDividendes)}`,
+    margin + 4,
+    y + 6.5
+  );
+  y += 16;
+
+  y = drawSectionTitle(pdf, "Comparaison des strategies", y, accent, margin);
+  const colW = (pdfWidth - margin * 2 - 4) / 4;
+  const columns: TableColumn[] = [
+    { label: "Poste", width: colW, align: "left" },
+    { label: "100% Salaire", width: colW, align: "right" },
+    { label: "Optimal", width: colW, align: "right" },
+    { label: "100% Dividendes", width: colW, align: "right" },
+  ];
+
+  const rows: TableRow[] = [
+    { cells: ["Salaire brut", fmtCurrency(toutSalaire.salaireBrut), fmtCurrency(optimal.salaireBrut), fmtCurrency(toutDividendes.salaireBrut)] },
+    { cells: ["Charges sociales", fmtCurrency(toutSalaire.chargesSociales), fmtCurrency(optimal.chargesSociales), fmtCurrency(toutDividendes.chargesSociales)] },
+    { cells: ["IR", fmtCurrency(toutSalaire.ir), fmtCurrency(optimal.ir), fmtCurrency(toutDividendes.ir)] },
+    { cells: ["IS", fmtCurrency(toutSalaire.is), fmtCurrency(optimal.is), fmtCurrency(toutDividendes.is)] },
+    { cells: ["Dividendes nets", fmtCurrency(toutSalaire.dividendesNets), fmtCurrency(optimal.dividendesNets), fmtCurrency(toutDividendes.dividendesNets)] },
+    { cells: ["Revenu net total", fmtCurrency(toutSalaire.revenuNetTotal), fmtCurrency(optimal.revenuNetTotal), fmtCurrency(toutDividendes.revenuNetTotal)], bold: true, highlight: true },
+  ];
+
+  y = drawTable(pdf, y, columns, rows, accent, margin, pdfWidth, pdfHeight);
+  return y;
+}
+
 // ── Main export ────────────────────────────────────────────────────────
 
 export async function generatePDF(
@@ -921,6 +1047,12 @@ export async function generatePDF(
       break;
     case "holding":
       finalY = renderHolding(pdf, data.result, accent, contentTop, margin, pdfWidth, pdfHeight);
+      break;
+    case "plus_value":
+      finalY = renderPlusValue(pdf, data.result, accent, contentTop, margin, pdfWidth, pdfHeight);
+      break;
+    case "opt_remuneration":
+      finalY = renderOptRemuneration(pdf, data.result, accent, contentTop, margin, pdfWidth, pdfHeight);
       break;
   }
 

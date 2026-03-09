@@ -57,16 +57,16 @@ export function SciResultsPanel({ input, result, loading, isValid }: ResultsPane
         <ResultCard
           label="Regime recommande"
           value={result.regimeRecommande === "IS" ? "SCI a l'IS" : "SCI a l'IR"}
-          subtitle="Sur 3 ans cumules"
+          subtitle="Sur 5 ans cumules"
           variant="success"
         />
         <ResultCard
-          label="Cumul SCI IR (3 ans)"
+          label="Cumul SCI IR (5 ans)"
           value={formatCurrency(result.cumulIR)}
           subtitle="Revenu net apres impots"
         />
         <ResultCard
-          label="Cumul SCI IS (3 ans)"
+          label="Cumul SCI IS (5 ans)"
           value={formatCurrency(result.cumulIS)}
           subtitle="Dividendes nets percus"
         />
@@ -78,7 +78,7 @@ export function SciResultsPanel({ input, result, loading, isValid }: ResultsPane
         </Badge>
         <p className="text-sm">
           La <strong>SCI a l&apos;{result.regimeRecommande}</strong> vous fait economiser{" "}
-          <strong>{formatCurrency(result.economie)}</strong> sur 3 ans.
+          <strong>{formatCurrency(result.economie)}</strong> sur 5 ans.
         </p>
       </div>
 
@@ -111,7 +111,7 @@ export function SciResultsPanel({ input, result, loading, isValid }: ResultsPane
 
               {/* IR Section */}
               <TableRow className="bg-blue-50/50">
-                <TableCell colSpan={4} className="font-semibold text-xs text-blue-700 uppercase tracking-wide">
+                <TableCell colSpan={result.annees.length + 1} className="font-semibold text-xs text-blue-700 uppercase tracking-wide">
                   SCI a l&apos;IR
                 </TableCell>
               </TableRow>
@@ -150,7 +150,7 @@ export function SciResultsPanel({ input, result, loading, isValid }: ResultsPane
 
               {/* IS Section */}
               <TableRow className="bg-orange-50/50">
-                <TableCell colSpan={4} className="font-semibold text-xs text-orange-700 uppercase tracking-wide">
+                <TableCell colSpan={result.annees.length + 1} className="font-semibold text-xs text-orange-700 uppercase tracking-wide">
                   SCI a l&apos;IS
                 </TableCell>
               </TableRow>

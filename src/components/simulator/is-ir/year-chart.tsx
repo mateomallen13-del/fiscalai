@@ -40,7 +40,7 @@ export function YearChart({ result }: YearChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Évolution sur 3 ans</CardTitle>
+        <CardTitle className="text-base">Évolution sur 5 ans</CardTitle>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="revenus">

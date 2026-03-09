@@ -3,10 +3,10 @@ import { calculateSASU } from "./sasu-calculator";
 import { calculateIR } from "./ir-calculator";
 import { calculateIS } from "./is-calculator";
 import { calculateDividends } from "./dividends-calculator";
-import type { IsIrInput, IsIrAnnee, IsIrResult } from "./types";
+import type { IsIrInput, IsIrAnnee, IsIrResult, OptimalSplitPoint } from "./types";
 
 /**
- * Simulation IS vs IR sur 3 ans.
+ * Simulation IS vs IR sur 5 ans.
  *
  * Régime IS : société à l'IS, dirigeant assimilé salarié (SASU),
  *   rémunération + dividendes avec flat tax 30%.
@@ -19,7 +19,7 @@ export function runIsIrSimulation(input: IsIrInput): IsIrResult {
   let cumulIS = 0;
   let cumulIR = 0;
 
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 5; i++) {
     const croissance = Math.pow(1 + input.tauxCroissance / 100, i);
     const benefice = Math.round(input.beneficeAnnuel * croissance);
     const remuneration = input.remunerationBrute;
@@ -85,11 +85,77 @@ export function runIsIrSimulation(input: IsIrInput): IsIrResult {
   const economie = Math.abs(cumulIS - cumulIR);
   const regimeRecommande = cumulIS >= cumulIR ? "IS" : "IR";
 
+  // --- Optimal salary vs dividends split ---
+  const { optimalSplit, splitCurve } = computeOptimalSplit(
+    input.beneficeAnnuel,
+    input.situationFamiliale
+  );
+
   return {
     annees,
     cumulIS: Math.round(cumulIS),
     cumulIR: Math.round(cumulIR),
     regimeRecommande,
     economie: Math.round(economie),
+    optimalSplit,
+    splitCurve,
+  };
+}
+
+/**
+ * Compute the optimal salary vs dividends split for year 1 benefit.
+ * Tests salary from 0 to benefit in steps, rest goes to IS + dividends.
+ */
+function computeOptimalSplit(
+  benefice: number,
+  situation: string
+): { optimalSplit: OptimalSplitPoint; splitCurve: OptimalSplitPoint[] } {
+  const curve: OptimalSplitPoint[] = [];
+  let best: OptimalSplitPoint | null = null;
+
+  // Test 21 salary levels (0%, 5%, 10%, ... 100% of benefit)
+  const steps = 20;
+  for (let s = 0; s <= steps; s++) {
+    const salaireBrut = Math.round((benefice * s) / steps);
+    const point = computeSplitPoint(benefice, salaireBrut, situation);
+    curve.push(point);
+    if (!best || point.revenuNet > best.revenuNet) {
+      best = point;
+    }
+  }
+
+  return {
+    optimalSplit: best!,
+    splitCurve: curve,
+  };
+}
+
+function computeSplitPoint(
+  benefice: number,
+  salaireBrut: number,
+  situation: string
+): OptimalSplitPoint {
+  const sasuCalc = calculateSASU(salaireBrut);
+  const coutRemuneration = sasuCalc.coutTotalEntreprise;
+  const beneficeResiduel = Math.max(0, benefice - coutRemuneration);
+  const isCalc = calculateIS(beneficeResiduel);
+  const profitApresIS = beneficeResiduel - isCalc.montant;
+  const dividendesCalc = calculateDividends(profitApresIS);
+  const irCalc = calculateIR(
+    sasuCalc.netAvantIR,
+    situation as import("./types").SituationFamiliale
+  );
+
+  const revenuNet =
+    sasuCalc.netAvantIR - irCalc.impotNet + dividendesCalc.montantNet;
+
+  return {
+    salaireBrut,
+    dividendes: dividendesCalc.montantBrut,
+    chargesSociales: sasuCalc.chargesSalariales + sasuCalc.chargesPatronales,
+    ir: irCalc.impotNet,
+    flatTax: dividendesCalc.flatTax,
+    is: isCalc.montant,
+    revenuNet: Math.round(revenuNet),
   };
 }

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Calculator, GitCompareArrows, TrendingUp, Building2, Car, Network } from "lucide-react";
+import { Calculator, GitCompareArrows, TrendingUp, Building2, Car, Network, Landmark, SlidersHorizontal } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -22,14 +22,14 @@ const simulators = [
   {
     href: "/simulateur/is-vs-ir",
     title: "Simulation IS vs IR",
-    description: "Simulation sur 3 ans avec dividendes et flat tax.",
+    description: "Simulation sur 5 ans avec dividendes et flat tax.",
     icon: TrendingUp,
     available: true,
   },
   {
     href: "/simulateur/sci",
     title: "Simulateur SCI",
-    description: "Comparez SCI IR vs SCI IS : loyers, amortissement, projection 3 ans.",
+    description: "Comparez SCI IR vs SCI IS : loyers, amortissement, projection 5 ans.",
     icon: Building2,
     available: true,
   },
@@ -45,6 +45,20 @@ const simulators = [
     title: "Fiscalité holding",
     description: "Régime mère-fille, optimisation IS et rémunération.",
     icon: Network,
+    available: true,
+  },
+  {
+    href: "/simulateur/plus-value-cession",
+    title: "Plus-value de cession",
+    description: "Flat tax vs barème progressif, abattements PME et retraite.",
+    icon: Landmark,
+    available: true,
+  },
+  {
+    href: "/simulateur/optimisation-remuneration",
+    title: "Optimisation rémunération",
+    description: "Répartition optimale salaire / dividendes pour maximiser le revenu net.",
+    icon: SlidersHorizontal,
     available: true,
   },
 ];
