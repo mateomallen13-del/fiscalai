@@ -5,6 +5,7 @@ import { Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { generatePDF } from "@/lib/pdf/generate-report";
 import { useBranding } from "@/hooks/use-branding";
+import { toast } from "sonner";
 
 interface PdfExportButtonProps {
   filename?: string;
@@ -20,9 +21,15 @@ export function PdfExportButton({
   const [loading, setLoading] = useState(false);
   const { branding } = useBranding();
 
-  async function handleExport() {
+  async function handleExport(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+
     const element = document.getElementById("results-panel");
-    if (!element) return;
+    if (!element) {
+      toast.error("Aucun résultat à exporter.");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -31,15 +38,22 @@ export function PdfExportButton({
         clientName,
         reportTitle,
       });
+      toast.success("PDF téléchargé.");
     } catch (err) {
       console.error("PDF export failed:", err);
+      toast.error("Erreur lors de la génération du PDF.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <Button variant="outline" onClick={handleExport} disabled={loading}>
+    <Button
+      type="button"
+      variant="outline"
+      onClick={handleExport}
+      disabled={loading}
+    >
       {loading ? (
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
       ) : (

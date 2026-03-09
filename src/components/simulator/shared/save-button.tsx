@@ -33,7 +33,15 @@ export function SaveButton({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  async function handleSave() {
+  function handleOpenDialog(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setOpen(true);
+  }
+
+  async function handleSave(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
     setSaving(true);
     try {
       const res = await fetch("/api/simulation/save", {
@@ -47,6 +55,12 @@ export function SaveButton({
         }),
       });
 
+      if (res.status === 401) {
+        toast.error("Connectez-vous pour sauvegarder vos simulations.");
+        setOpen(false);
+        return;
+      }
+
       if (res.status === 402) {
         toast.error(
           "Limite de simulations gratuites atteinte. Passez au plan Pro pour continuer."
@@ -56,15 +70,17 @@ export function SaveButton({
       }
 
       if (!res.ok) {
-        throw new Error("Save failed");
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Save failed");
       }
 
       setSaved(true);
       toast.success("Simulation sauvegardée.");
       setOpen(false);
       setTimeout(() => setSaved(false), 3000);
-    } catch {
-      toast.error("Erreur lors de la sauvegarde.");
+    } catch (err) {
+      console.error("Save error:", err);
+      toast.error("Erreur lors de la sauvegarde. Vérifiez votre connexion.");
     } finally {
       setSaving(false);
     }
@@ -73,8 +89,9 @@ export function SaveButton({
   return (
     <>
       <Button
+        type="button"
         variant="outline"
-        onClick={() => setOpen(true)}
+        onClick={handleOpenDialog}
         disabled={disabled || saved}
       >
         {saved ? (
@@ -90,8 +107,11 @@ export function SaveButton({
         )}
       </Button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog
+        open={open}
+        onOpenChange={(isOpen) => setOpen(isOpen)}
+      >
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Sauvegarder la simulation</DialogTitle>
             <DialogDescription>
@@ -109,10 +129,17 @@ export function SaveButton({
             />
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpen(false)}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={(e) => {
+                e.preventDefault();
+                setOpen(false);
+              }}
+            >
               Annuler
             </Button>
-            <Button onClick={handleSave} disabled={saving}>
+            <Button type="button" onClick={handleSave} disabled={saving}>
               {saving ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (

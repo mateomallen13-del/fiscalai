@@ -31,12 +31,69 @@ export async function generatePDF(
   const accentColor = branding?.accentColor ?? "#2563eb";
   const [ar, ag, ab] = hexToRgb(accentColor);
 
+  // Convert SVG elements to canvas before capture (Recharts uses SVG)
+  const svgElements = element.querySelectorAll("svg");
+  const svgBackups: { svg: SVGElement; parent: Node; canvas: HTMLCanvasElement }[] = [];
+
+  for (const svg of svgElements) {
+    try {
+      const svgRect = svg.getBoundingClientRect();
+      if (svgRect.width === 0 || svgRect.height === 0) continue;
+
+      const svgCanvas = document.createElement("canvas");
+      svgCanvas.width = svgRect.width * 2;
+      svgCanvas.height = svgRect.height * 2;
+      svgCanvas.style.width = `${svgRect.width}px`;
+      svgCanvas.style.height = `${svgRect.height}px`;
+
+      const ctx = svgCanvas.getContext("2d");
+      if (!ctx) continue;
+
+      ctx.scale(2, 2);
+
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+      const svgUrl = URL.createObjectURL(svgBlob);
+
+      const img = new Image();
+      await new Promise<void>((resolve) => {
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, svgRect.width, svgRect.height);
+          URL.revokeObjectURL(svgUrl);
+          resolve();
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(svgUrl);
+          resolve();
+        };
+        img.src = svgUrl;
+      });
+
+      if (svg.parentNode) {
+        svgBackups.push({ svg, parent: svg.parentNode, canvas: svgCanvas });
+        svg.parentNode.replaceChild(svgCanvas, svg);
+      }
+    } catch {
+      // If SVG conversion fails, html2canvas will try its best
+    }
+  }
+
   const canvas = await html2canvas(element, {
     scale: 2,
     useCORS: true,
     logging: false,
     backgroundColor: "#ffffff",
+    foreignObjectRendering: false,
   });
+
+  // Restore SVG elements
+  for (const backup of svgBackups) {
+    try {
+      backup.parent.replaceChild(backup.svg, backup.canvas);
+    } catch {
+      // ignore
+    }
+  }
 
   const pdf = new jsPDF("p", "mm", "a4");
   const pdfWidth = pdf.internal.pageSize.getWidth();
