@@ -3,6 +3,9 @@ import type {
   SimulationResult,
   IsIrResult,
   StatutsResult,
+  SciResult,
+  VehiculeResult,
+  HoldingResult,
 } from "@/lib/fiscal/types";
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -10,7 +13,10 @@ import type {
 export type PdfData =
   | { type: "remuneration"; result: SimulationResult }
   | { type: "is_vs_ir"; result: IsIrResult }
-  | { type: "comparateur_statuts"; result: StatutsResult };
+  | { type: "comparateur_statuts"; result: StatutsResult }
+  | { type: "sci"; result: SciResult }
+  | { type: "vehicule"; result: VehiculeResult }
+  | { type: "holding"; result: HoldingResult };
 
 interface PdfOptions {
   branding?: BrandingConfig;
@@ -693,6 +699,172 @@ function renderStatuts(
   return y;
 }
 
+// ── SCI Renderer ───────────────────────────────────────────────────────
+
+function renderSci(
+  pdf: JsPDFInstance,
+  result: SciResult,
+  accent: [number, number, number],
+  startY: number,
+  margin: number,
+  pdfWidth: number,
+  pdfHeight: number
+): number {
+  let y = startY;
+  const cardWidth = (pdfWidth - margin * 2 - 12) / 3;
+
+  drawMetricCard(pdf, margin, y, cardWidth, "Regime recommande", `SCI ${result.regimeRecommande}`, accent);
+  drawMetricCard(pdf, margin + cardWidth + 6, y, cardWidth, "Cumul IR (3 ans)", fmtCurrency(result.cumulIR), accent);
+  drawMetricCard(pdf, margin + (cardWidth + 6) * 2, y, cardWidth, "Cumul IS (3 ans)", fmtCurrency(result.cumulIS), accent);
+  y += 24;
+
+  pdf.setFillColor(220, 252, 231);
+  pdf.roundedRect(margin, y, pdfWidth - margin * 2, 10, 2, 2, "F");
+  pdf.setFontSize(9);
+  pdf.setTextColor(22, 101, 52);
+  pdf.setFont("helvetica", "bold");
+  pdf.text(`SCI ${result.regimeRecommande} recommande — Economie de ${fmtCurrency(result.economie)} sur 3 ans`, margin + 4, y + 6.5);
+  y += 16;
+
+  y = drawSectionTitle(pdf, "Detail annee par annee", y, accent, margin);
+  const contentW = pdfWidth - margin * 2 - 4;
+  const firstColW = contentW * 0.26;
+  const yearColW = (contentW - firstColW) / result.annees.length;
+  const halfW = yearColW / 2;
+
+  const columns: TableColumn[] = [{ label: "Indicateur", width: firstColW, align: "left" }];
+  for (const a of result.annees) {
+    columns.push({ label: `An ${a.annee} IR`, width: halfW, align: "right" });
+    columns.push({ label: `An ${a.annee} IS`, width: halfW, align: "right" });
+  }
+
+  const rows: TableRow[] = [
+    { cells: ["Loyers", ...result.annees.flatMap((a) => [fmtCurrency(a.loyers), fmtCurrency(a.loyers)])] },
+    { cells: ["Base imposable", ...result.annees.flatMap((a) => [fmtCurrency(a.ir.revenuFoncier), fmtCurrency(a.is.resultatComptable)])] },
+    { cells: ["Impots + PS", ...result.annees.flatMap((a) => [fmtCurrency(a.ir.irMontant + a.ir.prelevementsSociaux), fmtCurrency(a.is.montantIS + a.is.flatTax)])] },
+    { cells: ["Revenu net", ...result.annees.flatMap((a) => [fmtCurrency(a.ir.revenuNet), fmtCurrency(a.is.dividendesNets)])], bold: true, highlight: true },
+    { cells: ["Avantage IS", ...result.annees.flatMap((a) => [(a.avantageSciIS >= 0 ? "+" : "") + fmtCurrency(a.avantageSciIS), ""])], bold: true },
+  ];
+
+  y = drawTable(pdf, y, columns, rows, accent, margin, pdfWidth, pdfHeight);
+  return y;
+}
+
+// ── Vehicule Renderer ──────────────────────────────────────────────────
+
+function renderVehicule(
+  pdf: JsPDFInstance,
+  result: VehiculeResult,
+  accent: [number, number, number],
+  startY: number,
+  margin: number,
+  pdfWidth: number,
+  pdfHeight: number
+): number {
+  let y = startY;
+  const cardWidth = (pdfWidth - margin * 2 - 12) / 3;
+  const { personnel, societe } = result;
+
+  drawMetricCard(pdf, margin, y, cardWidth, "Recommandation", result.recommandation === "societe" ? "Vehicule societe" : "Vehicule personnel", accent);
+  drawMetricCard(pdf, margin + cardWidth + 6, y, cardWidth, "Cout perso (total)", fmtCurrency(personnel.coutTotalEntreprise), accent);
+  drawMetricCard(pdf, margin + (cardWidth + 6) * 2, y, cardWidth, "Cout societe (total)", fmtCurrency(societe.coutTotalEntreprise), accent);
+  y += 24;
+
+  y = drawSectionTitle(pdf, "Comparaison detaillee", y, accent, margin);
+  const colW = (pdfWidth - margin * 2 - 4) / 3;
+  const columns: TableColumn[] = [
+    { label: "Poste", width: colW, align: "left" },
+    { label: "Personnel (IK)", width: colW, align: "right" },
+    { label: "Societe", width: colW, align: "right" },
+  ];
+
+  const rows: TableRow[] = [
+    { cells: ["IK / Amortissement", fmtCurrency(personnel.details.indemniteKm ?? 0) + "/an", fmtCurrency(societe.details.amortissementDeductible ?? 0) + "/an"] },
+    { cells: ["Carburant", fmtCurrency(personnel.details.carburant) + "/an", fmtCurrency(societe.details.carburant) + "/an"] },
+    { cells: ["Assurance + entretien", "Inclus IK", fmtCurrency(societe.details.assuranceEntretien ?? 0) + "/an"] },
+    { cells: ["TVS annuelle", "—", fmtCurrency(societe.tvs) + "/an"] },
+    { cells: ["TVA recuperee", "—", "-" + fmtCurrency(societe.tvaRecuperee) + "/an"] },
+    { cells: ["Avantage en nature", "—", fmtCurrency(societe.avantageNature) + "/an"] },
+    { cells: ["Cout annuel entreprise", fmtCurrency(personnel.coutAnnuelEntreprise), fmtCurrency(societe.coutAnnuelEntreprise)], bold: true },
+    { cells: ["Cout total", fmtCurrency(personnel.coutTotalEntreprise), fmtCurrency(societe.coutTotalEntreprise)], bold: true, highlight: true },
+  ];
+
+  y = drawTable(pdf, y, columns, rows, accent, margin, pdfWidth, pdfHeight);
+  return y;
+}
+
+// ── Holding Renderer ───────────────────────────────────────────────────
+
+function renderHolding(
+  pdf: JsPDFInstance,
+  result: HoldingResult,
+  accent: [number, number, number],
+  startY: number,
+  margin: number,
+  pdfWidth: number,
+  pdfHeight: number
+): number {
+  let y = startY;
+  const cardWidth = (pdfWidth - margin * 2 - 12) / 3;
+
+  drawMetricCard(pdf, margin, y, cardWidth, "Recommandation", result.recommandation === "avec_holding" ? "Avec holding" : "Sans holding", accent);
+  drawMetricCard(pdf, margin + cardWidth + 6, y, cardWidth, "Revenu sans holding", fmtCurrency(result.sansHolding.revenuTotal), accent);
+  drawMetricCard(pdf, margin + (cardWidth + 6) * 2, y, cardWidth, "Revenu avec holding", fmtCurrency(result.avecHolding.revenuTotal), accent);
+  y += 24;
+
+  // Reasons
+  pdf.setFillColor(220, 252, 231);
+  pdf.roundedRect(margin, y, pdfWidth - margin * 2, 10, 2, 2, "F");
+  pdf.setFontSize(9);
+  pdf.setTextColor(22, 101, 52);
+  pdf.setFont("helvetica", "bold");
+  pdf.text(`Economie de ${fmtCurrency(result.economie)}`, margin + 4, y + 6.5);
+  y += 14;
+
+  pdf.setFontSize(8);
+  pdf.setTextColor(60, 60, 60);
+  pdf.setFont("helvetica", "normal");
+  for (const r of result.raisons) {
+    pdf.text(`• ${r}`, margin + 2, y);
+    y += 5;
+  }
+  y += 4;
+
+  // Without holding table
+  y = drawSectionTitle(pdf, "Structure directe", y, accent, margin);
+  const colW = (pdfWidth - margin * 2 - 4) / 2;
+  const s = result.sansHolding;
+  y = drawTable(pdf, y,
+    [{ label: "Poste", width: colW, align: "left" }, { label: "Montant", width: colW, align: "right" }],
+    [
+      { cells: ["Benefice", fmtCurrency(s.benefice)] },
+      { cells: ["IS", fmtCurrency(s.is)] },
+      { cells: ["Remuneration nette", fmtCurrency(s.remunerationNette)] },
+      { cells: ["IR remuneration", fmtCurrency(s.irRemuneration)] },
+      { cells: ["Dividendes nets", fmtCurrency(s.dividendesNets)] },
+      { cells: ["Revenu total", fmtCurrency(s.revenuTotal)], bold: true, highlight: true },
+    ], accent, margin, pdfWidth, pdfHeight);
+  y += 6;
+
+  // With holding table
+  y = drawSectionTitle(pdf, "Structure avec holding", y, accent, margin);
+  const h = result.avecHolding;
+  y = drawTable(pdf, y,
+    [{ label: "Poste", width: colW, align: "left" }, { label: "Montant", width: colW, align: "right" }],
+    [
+      { cells: ["IS filiale", fmtCurrency(h.isFiliale)] },
+      { cells: ["Dividendes vers holding", fmtCurrency(h.dividendesVersesHolding)] },
+      { cells: ["Quote-part frais (5%)", fmtCurrency(h.quotePartFrais)] },
+      { cells: ["IS holding", fmtCurrency(h.isHolding)] },
+      { cells: ["Charges holding", fmtCurrency(h.chargesHolding)] },
+      { cells: ["IR total", fmtCurrency(h.irHolding)] },
+      { cells: ["Dividendes holding nets", fmtCurrency(h.dividendesHoldingNets)] },
+      { cells: ["Revenu total", fmtCurrency(h.revenuTotal)], bold: true, highlight: true },
+    ], accent, margin, pdfWidth, pdfHeight);
+
+  return y;
+}
+
 // ── Main export ────────────────────────────────────────────────────────
 
 export async function generatePDF(
@@ -738,6 +910,15 @@ export async function generatePDF(
       break;
     case "comparateur_statuts":
       finalY = renderStatuts(pdf, data.result, accent, contentTop, margin, pdfWidth, pdfHeight);
+      break;
+    case "sci":
+      finalY = renderSci(pdf, data.result, accent, contentTop, margin, pdfWidth, pdfHeight);
+      break;
+    case "vehicule":
+      finalY = renderVehicule(pdf, data.result, accent, contentTop, margin, pdfWidth, pdfHeight);
+      break;
+    case "holding":
+      finalY = renderHolding(pdf, data.result, accent, contentTop, margin, pdfWidth, pdfHeight);
       break;
   }
 

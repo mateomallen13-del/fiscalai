@@ -182,3 +182,131 @@ export interface IsIrResult {
   regimeRecommande: "IS" | "IR";
   economie: number;
 }
+
+// --- SCI Simulator ---
+
+export interface SciInput {
+  loyersAnnuels: number;
+  chargesExploitation: number;
+  interetsEmprunt: number;
+  travauxDeductibles: number;
+  amortissementAnnuel: number; // Only for IS
+  tauxCroissance: number; // %
+  situationFamiliale: SituationFamiliale;
+  partsSCI: number; // % ownership (0-100)
+}
+
+export interface SciAnnee {
+  annee: number;
+  loyers: number;
+  // SCI IR
+  ir: {
+    revenuFoncier: number; // loyers - charges - interets - travaux
+    irMontant: number;
+    prelevementsSociaux: number; // 17.2%
+    revenuNet: number;
+  };
+  // SCI IS
+  is: {
+    resultatComptable: number; // loyers - charges - interets - travaux - amortissement
+    montantIS: number;
+    resultatApresIS: number;
+    dividendesBruts: number;
+    flatTax: number;
+    dividendesNets: number;
+    tresorerie: number; // resultatApresIS (before dividends decision)
+  };
+  avantageSciIS: number;
+}
+
+export interface SciResult {
+  annees: SciAnnee[];
+  cumulIR: number;
+  cumulIS: number;
+  regimeRecommande: "IR" | "IS";
+  economie: number;
+}
+
+// --- Vehicle Simulator ---
+
+export type TypeCarburant = "thermique" | "electrique" | "hybride";
+
+export interface VehiculeInput {
+  prixAchat: number;
+  emissionsCO2: number; // g/km
+  typeCarburant: TypeCarburant;
+  kmAnnuels: number;
+  puissanceFiscale: number; // CV
+  coutCarburantKm: number; // €/km
+  dureeUtilisation: number; // years (1-5)
+  tauxAvantageNature: number; // % of vehicle price for BIK
+}
+
+export interface VehiculeScenario {
+  label: string;
+  coutTotalEntreprise: number;
+  coutAnnuelEntreprise: number;
+  avantageNature: number; // Benefit in kind (company vehicle only)
+  tvs: number;
+  tvaRecuperee: number;
+  coutNetSalarie: number;
+  details: {
+    indemniteKm?: number;
+    amortissementDeductible?: number;
+    assuranceEntretien?: number;
+    carburant: number;
+  };
+}
+
+export interface VehiculeResult {
+  personnel: VehiculeScenario;
+  societe: VehiculeScenario;
+  recommandation: "personnel" | "societe";
+  economie: number;
+}
+
+// --- Holding Simulator ---
+
+export interface HoldingInput {
+  beneficeFiliale: number;
+  remunerationGerant: number;
+  dividendesVersesHolding: number; // % of profit after IS
+  chargesHolding: number; // holding operating costs
+  situationFamiliale: SituationFamiliale;
+  remunerationDepuisHolding: number; // additional salary from holding
+}
+
+export interface HoldingResult {
+  sansHolding: {
+    benefice: number;
+    is: number;
+    dividendesBruts: number;
+    flatTax: number;
+    dividendesNets: number;
+    remunerationNette: number;
+    irRemuneration: number;
+    revenuTotal: number;
+  };
+  avecHolding: {
+    // Filiale
+    beneficeFiliale: number;
+    isFiliale: number;
+    dividendesVersesHolding: number;
+    // Holding (parent-subsidiary: 95% exemption)
+    quotePartFrais: number; // 5% taxable
+    isHolding: number;
+    chargesHolding: number;
+    tresorerieHolding: number;
+    // Remuneration from holding
+    remunerationHoldingNette: number;
+    irHolding: number;
+    // Dividendes from holding to individual
+    dividendesHoldingBruts: number;
+    flatTaxHolding: number;
+    dividendesHoldingNets: number;
+    revenuTotal: number;
+  };
+  economie: number;
+  recommandation: "sans_holding" | "avec_holding";
+  raisons: string[];
+}

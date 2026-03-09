@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Calculator, GitCompareArrows, TrendingUp } from "lucide-react";
+import { Calculator, GitCompareArrows, TrendingUp, Building2, Car, Network } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -24,6 +24,27 @@ const simulators = [
     title: "Simulation IS vs IR",
     description: "Simulation sur 3 ans avec dividendes et flat tax.",
     icon: TrendingUp,
+    available: true,
+  },
+  {
+    href: "/simulateur/sci",
+    title: "Simulateur SCI",
+    description: "Comparez SCI IR vs SCI IS : loyers, amortissement, projection 3 ans.",
+    icon: Building2,
+    available: true,
+  },
+  {
+    href: "/simulateur/vehicule-fonction",
+    title: "Véhicule de fonction",
+    description: "Personnel (IK) vs société. TVS 2025, avantage en nature, TVA.",
+    icon: Car,
+    available: true,
+  },
+  {
+    href: "/simulateur/fiscalite-holding",
+    title: "Fiscalité holding",
+    description: "Régime mère-fille, optimisation IS et rémunération.",
+    icon: Network,
     available: true,
   },
 ];

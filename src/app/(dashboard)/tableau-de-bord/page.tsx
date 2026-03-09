@@ -10,6 +10,9 @@ import {
   Clock,
   FileText,
   ArrowRight,
+  Building2,
+  Car,
+  Network,
 } from "lucide-react";
 import {
   Card,
@@ -42,12 +45,33 @@ const simulators = [
     description: "Simulation sur 3 ans",
     icon: TrendingUp,
   },
+  {
+    href: "/simulateur/sci",
+    title: "Simulateur SCI",
+    description: "SCI IR vs SCI IS",
+    icon: Building2,
+  },
+  {
+    href: "/simulateur/vehicule-fonction",
+    title: "Véhicule de fonction",
+    description: "Personnel vs société, TVS",
+    icon: Car,
+  },
+  {
+    href: "/simulateur/fiscalite-holding",
+    title: "Fiscalité holding",
+    description: "Régime mère-fille",
+    icon: Network,
+  },
 ];
 
 const TYPE_LABELS: Record<string, string> = {
   remuneration_dirigeant: "Rémunération",
   comparateur_statuts: "Statuts",
   is_vs_ir: "IS/IR",
+  sci: "SCI",
+  vehicule: "Véhicule",
+  holding: "Holding",
 };
 
 interface Stats {
@@ -83,6 +107,24 @@ function getResultLabel(sim: RecentSim): string {
     const d = r as { regimeRecommande?: string; economie?: number };
     return d.regimeRecommande
       ? `${d.regimeRecommande} — ${formatCurrency(d.economie ?? 0)} sur 3 ans`
+      : "";
+  }
+  if (sim.type === "sci") {
+    const d = r as { regimeRecommande?: string; economie?: number };
+    return d.regimeRecommande
+      ? `SCI ${d.regimeRecommande} — ${formatCurrency(d.economie ?? 0)} sur 3 ans`
+      : "";
+  }
+  if (sim.type === "vehicule") {
+    const d = r as { recommandation?: string; economie?: number };
+    return d.recommandation
+      ? `${d.recommandation === "societe" ? "Société" : "Personnel"} — ${formatCurrency(d.economie ?? 0)}`
+      : "";
+  }
+  if (sim.type === "holding") {
+    const d = r as { recommandation?: string; economie?: number };
+    return d.recommandation
+      ? `${d.recommandation === "avec_holding" ? "Holding" : "Direct"} — ${formatCurrency(d.economie ?? 0)}`
       : "";
   }
   return "";
