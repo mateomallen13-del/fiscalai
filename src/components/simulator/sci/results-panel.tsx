@@ -90,68 +90,133 @@ export function SciResultsPanel({ input, result, loading, isValid }: ResultsPane
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[180px]">Indicateur</TableHead>
+                <TableHead className="w-[200px]">Indicateur</TableHead>
                 {result.annees.map((a) => (
                   <TableHead key={a.annee} className="text-center">
-                    <div className="flex gap-2 justify-center">
-                      <span className="text-blue-600">IR An {a.annee}</span>
-                      <span className="text-orange-600">IS An {a.annee}</span>
-                    </div>
+                    Annee {a.annee}
                   </TableHead>
                 ))}
               </TableRow>
             </TableHeader>
             <TableBody>
+              {/* Loyers */}
               <TableRow>
-                <TableCell className="font-medium">Loyers</TableCell>
+                <TableCell className="font-medium">Loyers bruts</TableCell>
                 {result.annees.map((a) => (
                   <TableCell key={a.annee} className="text-center">
                     {formatCurrency(a.loyers)}
                   </TableCell>
                 ))}
               </TableRow>
+
+              {/* IR Section */}
+              <TableRow className="bg-blue-50/50">
+                <TableCell colSpan={4} className="font-semibold text-xs text-blue-700 uppercase tracking-wide">
+                  SCI a l&apos;IR
+                </TableCell>
+              </TableRow>
               <TableRow>
-                <TableCell className="font-medium">Base imposable</TableCell>
+                <TableCell className="text-muted-foreground pl-6">Revenu foncier imposable</TableCell>
                 {result.annees.map((a) => (
-                  <TableCell key={a.annee} className="text-center text-xs">
-                    <div className="flex gap-3 justify-center">
-                      <span className="text-blue-600">{formatCurrency(a.ir.revenuFoncier)}</span>
-                      <span className="text-orange-600">{formatCurrency(a.is.resultatComptable)}</span>
-                    </div>
+                  <TableCell key={a.annee} className="text-center text-blue-600">
+                    {formatCurrency(a.ir.revenuFoncier)}
                   </TableCell>
                 ))}
               </TableRow>
               <TableRow>
-                <TableCell className="font-medium">Impots + PS</TableCell>
+                <TableCell className="text-muted-foreground pl-6">IR</TableCell>
                 {result.annees.map((a) => (
-                  <TableCell key={a.annee} className="text-center text-xs">
-                    <div className="flex gap-3 justify-center">
-                      <span className="text-blue-600">
-                        {formatCurrency(a.ir.irMontant + a.ir.prelevementsSociaux)}
-                      </span>
-                      <span className="text-orange-600">
-                        {formatCurrency(a.is.montantIS + a.is.flatTax)}
-                      </span>
-                    </div>
+                  <TableCell key={a.annee} className="text-center text-blue-600">
+                    {formatCurrency(a.ir.irMontant)}
                   </TableCell>
                 ))}
               </TableRow>
+              <TableRow>
+                <TableCell className="text-muted-foreground pl-6">Prelevements sociaux (17,2%)</TableCell>
+                {result.annees.map((a) => (
+                  <TableCell key={a.annee} className="text-center text-blue-600">
+                    {formatCurrency(a.ir.prelevementsSociaux)}
+                  </TableCell>
+                ))}
+              </TableRow>
+              <TableRow className="font-semibold">
+                <TableCell className="pl-6">Revenu net IR</TableCell>
+                {result.annees.map((a) => (
+                  <TableCell key={a.annee} className="text-center text-blue-700">
+                    {formatCurrency(a.ir.revenuNet)}
+                  </TableCell>
+                ))}
+              </TableRow>
+
+              {/* IS Section */}
+              <TableRow className="bg-orange-50/50">
+                <TableCell colSpan={4} className="font-semibold text-xs text-orange-700 uppercase tracking-wide">
+                  SCI a l&apos;IS
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="text-muted-foreground pl-6">Cash-flow (loyers - charges)</TableCell>
+                {result.annees.map((a) => (
+                  <TableCell key={a.annee} className="text-center text-orange-600">
+                    {formatCurrency(a.is.cashFlow)}
+                  </TableCell>
+                ))}
+              </TableRow>
+              <TableRow>
+                <TableCell className="text-muted-foreground pl-6">Resultat fiscal (apres amortissement)</TableCell>
+                {result.annees.map((a) => (
+                  <TableCell key={a.annee} className="text-center text-orange-600">
+                    {formatCurrency(a.is.resultatFiscal)}
+                  </TableCell>
+                ))}
+              </TableRow>
+              <TableRow>
+                <TableCell className="text-muted-foreground pl-6">IS (15% / 25%)</TableCell>
+                {result.annees.map((a) => (
+                  <TableCell key={a.annee} className="text-center text-orange-600">
+                    {formatCurrency(a.is.montantIS)}
+                  </TableCell>
+                ))}
+              </TableRow>
+              <TableRow>
+                <TableCell className="text-muted-foreground pl-6">Dividendes bruts distribuables</TableCell>
+                {result.annees.map((a) => (
+                  <TableCell key={a.annee} className="text-center text-orange-600">
+                    {formatCurrency(a.is.dividendesBruts)}
+                  </TableCell>
+                ))}
+              </TableRow>
+              <TableRow>
+                <TableCell className="text-muted-foreground pl-6">Flat tax (30%)</TableCell>
+                {result.annees.map((a) => (
+                  <TableCell key={a.annee} className="text-center text-orange-600">
+                    {formatCurrency(a.is.flatTax)}
+                  </TableCell>
+                ))}
+              </TableRow>
+              <TableRow className="font-semibold">
+                <TableCell className="pl-6">Dividendes nets percus</TableCell>
+                {result.annees.map((a) => (
+                  <TableCell key={a.annee} className="text-center text-orange-700">
+                    {formatCurrency(a.is.dividendesNets)}
+                  </TableCell>
+                ))}
+              </TableRow>
+              <TableRow>
+                <TableCell className="text-muted-foreground pl-6 text-xs">Tresorerie restante en SCI</TableCell>
+                {result.annees.map((a) => (
+                  <TableCell key={a.annee} className="text-center text-xs text-muted-foreground">
+                    {formatCurrency(a.is.tresorerieRestante)}
+                  </TableCell>
+                ))}
+              </TableRow>
+
+              {/* Comparison */}
               <TableRow className="font-bold bg-muted/50">
-                <TableCell>Revenu net</TableCell>
-                {result.annees.map((a) => (
-                  <TableCell key={a.annee} className="text-center text-xs">
-                    <div className="flex gap-3 justify-center">
-                      <span className="text-blue-600">{formatCurrency(a.ir.revenuNet)}</span>
-                      <span className="text-orange-600">{formatCurrency(a.is.dividendesNets)}</span>
-                    </div>
-                  </TableCell>
-                ))}
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-medium">Avantage SCI IS</TableCell>
+                <TableCell>Avantage SCI IS</TableCell>
                 {result.annees.map((a) => (
                   <TableCell key={a.annee} className="text-center">
-                    <span className={a.avantageSciIS >= 0 ? "text-green-600 font-medium" : "text-red-500 font-medium"}>
+                    <span className={a.avantageSciIS >= 0 ? "text-green-600" : "text-red-500"}>
                       {a.avantageSciIS >= 0 ? "+" : ""}{formatCurrency(a.avantageSciIS)}
                     </span>
                   </TableCell>
@@ -161,6 +226,18 @@ export function SciResultsPanel({ input, result, loading, isValid }: ResultsPane
           </Table>
         </CardContent>
       </Card>
+
+      {/* Note about depreciation */}
+      {result.annees.some((a) => a.is.tresorerieRestante > 0) && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-sm text-amber-800">
+            <strong>Note :</strong> L&apos;amortissement reduit le resultat fiscal (et donc l&apos;IS a payer)
+            mais n&apos;est pas une sortie de tresorerie. La tresorerie restante dans la SCI IS correspond
+            a l&apos;ecart entre le cash-flow reel et les dividendes distribuables. Elle reste disponible
+            pour des investissements ou des remboursements d&apos;emprunt.
+          </p>
+        </div>
+      )}
 
       <div className="flex justify-end gap-3 border-t pt-4">
         <SaveButton type="sci" inputData={input} resultData={result} />

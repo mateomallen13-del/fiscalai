@@ -208,13 +208,13 @@ export interface SciAnnee {
   };
   // SCI IS
   is: {
-    resultatComptable: number; // loyers - charges - interets - travaux - amortissement
+    resultatFiscal: number; // loyers - charges - interets - travaux - amortissement (taxable)
+    cashFlow: number; // loyers - charges - interets - travaux (actual cash, no depreciation)
     montantIS: number;
-    resultatApresIS: number;
-    dividendesBruts: number;
+    dividendesBruts: number; // min(cashFlow - IS, resultatFiscal - IS) — distributable
     flatTax: number;
     dividendesNets: number;
-    tresorerie: number; // resultatApresIS (before dividends decision)
+    tresorerieRestante: number; // cash kept in SCI (non-distributable excess from depreciation)
   };
   avantageSciIS: number;
 }

@@ -13,7 +13,10 @@ const PRELEVEMENTS_SOCIAUX_RATE = 0.172;
  *
  * SCI IS: rental income taxed at corporate level (IS).
  *   Deductible: charges, loan interest, works, AND depreciation.
- *   Dividends distributed to individual taxed at 30% flat tax.
+ *   IS is computed on the fiscal result (with depreciation).
+ *   But depreciation is non-cash — actual cash flow = loyers - charges - interets - travaux.
+ *   Distributable dividends = fiscal result after IS (capped by accounting rules).
+ *   Remaining cash (from depreciation shield) stays in the SCI as reserves.
  */
 export function runSciSimulation(input: SciInput): SciResult {
   const annees: SciAnnee[] = [];
@@ -25,31 +28,43 @@ export function runSciSimulation(input: SciInput): SciResult {
     const croissance = Math.pow(1 + input.tauxCroissance / 100, i);
     const loyers = Math.round(input.loyersAnnuels * croissance);
 
-    // Common deductions (both regimes)
-    const chargesDeductibles =
+    // Cash deductions (both regimes)
+    const chargesCash =
       input.chargesExploitation + input.interetsEmprunt + input.travauxDeductibles;
 
     // --- SCI IR ---
     // Revenu foncier = loyers - charges - intérêts - travaux (no depreciation)
-    const revenuFoncier = Math.max(0, Math.round((loyers - chargesDeductibles) * partRatio));
+    const revenuFoncier = Math.max(0, Math.round((loyers - chargesCash) * partRatio));
     const irCalc = calculateIR(revenuFoncier, input.situationFamiliale);
     const prelevementsSociaux = Math.round(revenuFoncier * PRELEVEMENTS_SOCIAUX_RATE);
     const revenuNetIR = revenuFoncier - irCalc.impotNet - prelevementsSociaux;
 
     // --- SCI IS ---
-    // Résultat comptable = loyers - charges - intérêts - travaux - amortissement
-    const resultatComptable = Math.max(
-      0,
-      Math.round(loyers - chargesDeductibles - input.amortissementAnnuel)
-    );
-    const isCalc = calculateIS(resultatComptable);
-    const resultatApresIS = resultatComptable - isCalc.montant;
-    // Distribute 100% as dividends for comparison
-    const dividendesBruts = Math.round(resultatApresIS * partRatio);
+    // Fiscal result (with depreciation — non-cash deduction reduces tax base)
+    const resultatFiscal = Math.max(0, loyers - chargesCash - input.amortissementAnnuel);
+
+    // Actual cash generated (depreciation is non-cash, so cash > fiscal result)
+    const cashFlow = Math.max(0, loyers - chargesCash);
+
+    // IS computed on fiscal result
+    const isCalc = calculateIS(resultatFiscal);
+
+    // Distributable dividends: limited to fiscal result after IS
+    // (can't distribute more than accounting profit per French law)
+    const distributableProfit = Math.max(0, resultatFiscal - isCalc.montant);
+
+    // Associate's share
+    const dividendesBruts = Math.round(distributableProfit * partRatio);
     const flatTax = Math.round(dividendesBruts * 0.3);
     const dividendesNets = dividendesBruts - flatTax;
-    const tresorerie = Math.round(resultatApresIS);
 
+    // Cash remaining in SCI (includes depreciation cash shield)
+    // = total cash - IS paid - dividends distributed
+    const tresorerieRestante = Math.round(cashFlow - isCalc.montant - distributableProfit);
+
+    // For comparison: associate's total benefit under IS =
+    // dividends received + their share of cash accumulation in SCI
+    // We compare dividendesNets (what they actually receive as cash)
     const avantageSciIS = dividendesNets - revenuNetIR;
 
     cumulIR += revenuNetIR;
@@ -65,13 +80,13 @@ export function runSciSimulation(input: SciInput): SciResult {
         revenuNet: revenuNetIR,
       },
       is: {
-        resultatComptable,
+        resultatFiscal,
+        cashFlow,
         montantIS: isCalc.montant,
-        resultatApresIS,
         dividendesBruts,
         flatTax,
         dividendesNets,
-        tresorerie,
+        tresorerieRestante: Math.max(0, tresorerieRestante),
       },
       avantageSciIS: Math.round(avantageSciIS),
     });

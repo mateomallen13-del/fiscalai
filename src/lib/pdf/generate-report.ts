@@ -740,8 +740,10 @@ function renderSci(
 
   const rows: TableRow[] = [
     { cells: ["Loyers", ...result.annees.flatMap((a) => [fmtCurrency(a.loyers), fmtCurrency(a.loyers)])] },
-    { cells: ["Base imposable", ...result.annees.flatMap((a) => [fmtCurrency(a.ir.revenuFoncier), fmtCurrency(a.is.resultatComptable)])] },
-    { cells: ["Impots + PS", ...result.annees.flatMap((a) => [fmtCurrency(a.ir.irMontant + a.ir.prelevementsSociaux), fmtCurrency(a.is.montantIS + a.is.flatTax)])] },
+    { cells: ["Revenu foncier / Resultat fiscal", ...result.annees.flatMap((a) => [fmtCurrency(a.ir.revenuFoncier), fmtCurrency(a.is.resultatFiscal)])] },
+    { cells: ["Cash-flow reel", ...result.annees.flatMap((a) => ["—", fmtCurrency(a.is.cashFlow)])] },
+    { cells: ["IR+PS / IS", ...result.annees.flatMap((a) => [fmtCurrency(a.ir.irMontant + a.ir.prelevementsSociaux), fmtCurrency(a.is.montantIS)])] },
+    { cells: ["Dividendes nets / Flat tax", ...result.annees.flatMap((a) => ["—", fmtCurrency(a.is.dividendesNets) + " (flat " + fmtCurrency(a.is.flatTax) + ")"])] },
     { cells: ["Revenu net", ...result.annees.flatMap((a) => [fmtCurrency(a.ir.revenuNet), fmtCurrency(a.is.dividendesNets)])], bold: true, highlight: true },
     { cells: ["Avantage IS", ...result.annees.flatMap((a) => [(a.avantageSciIS >= 0 ? "+" : "") + fmtCurrency(a.avantageSciIS), ""])], bold: true },
   ];
