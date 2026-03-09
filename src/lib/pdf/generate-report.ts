@@ -31,13 +31,30 @@ export async function generatePDF(
   const accentColor = branding?.accentColor ?? "#2563eb";
   const [ar, ag, ab] = hexToRgb(accentColor);
 
-  // Convert SVG elements to canvas before capture (Recharts uses SVG)
-  const svgElements = element.querySelectorAll("svg");
-  const svgBackups: { svg: SVGElement; parent: Node; canvas: HTMLCanvasElement }[] = [];
+  // Clone the element so we don't mutate React's live DOM
+  const clone = element.cloneNode(true) as HTMLElement;
+  clone.style.position = "absolute";
+  clone.style.left = "-9999px";
+  clone.style.top = "0";
+  clone.style.width = `${element.offsetWidth}px`;
+  document.body.appendChild(clone);
 
+  // Convert SVG elements to canvas in the clone (Recharts uses SVG)
+  const svgElements = clone.querySelectorAll("svg");
   for (const svg of svgElements) {
     try {
-      const svgRect = svg.getBoundingClientRect();
+      // Use the original element's matching SVG for dimensions
+      const origSvgs = element.querySelectorAll("svg");
+      let svgRect: DOMRect | null = null;
+      for (const origSvg of origSvgs) {
+        if (origSvg.getAttribute("class") === svg.getAttribute("class")) {
+          svgRect = origSvg.getBoundingClientRect();
+          break;
+        }
+      }
+      if (!svgRect) {
+        svgRect = svg.getBoundingClientRect();
+      }
       if (svgRect.width === 0 || svgRect.height === 0) continue;
 
       const svgCanvas = document.createElement("canvas");
@@ -51,6 +68,10 @@ export async function generatePDF(
 
       ctx.scale(2, 2);
 
+      // Set explicit dimensions on the SVG for proper rendering
+      svg.setAttribute("width", String(svgRect.width));
+      svg.setAttribute("height", String(svgRect.height));
+
       const svgData = new XMLSerializer().serializeToString(svg);
       const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
       const svgUrl = URL.createObjectURL(svgBlob);
@@ -58,7 +79,7 @@ export async function generatePDF(
       const img = new Image();
       await new Promise<void>((resolve) => {
         img.onload = () => {
-          ctx.drawImage(img, 0, 0, svgRect.width, svgRect.height);
+          ctx.drawImage(img, 0, 0, svgRect!.width, svgRect!.height);
           URL.revokeObjectURL(svgUrl);
           resolve();
         };
@@ -70,7 +91,6 @@ export async function generatePDF(
       });
 
       if (svg.parentNode) {
-        svgBackups.push({ svg, parent: svg.parentNode, canvas: svgCanvas });
         svg.parentNode.replaceChild(svgCanvas, svg);
       }
     } catch {
@@ -78,7 +98,7 @@ export async function generatePDF(
     }
   }
 
-  const canvas = await html2canvas(element, {
+  const canvas = await html2canvas(clone, {
     scale: 2,
     useCORS: true,
     logging: false,
@@ -86,14 +106,8 @@ export async function generatePDF(
     foreignObjectRendering: false,
   });
 
-  // Restore SVG elements
-  for (const backup of svgBackups) {
-    try {
-      backup.parent.replaceChild(backup.svg, backup.canvas);
-    } catch {
-      // ignore
-    }
-  }
+  // Remove the clone from the DOM
+  document.body.removeChild(clone);
 
   const pdf = new jsPDF("p", "mm", "a4");
   const pdfWidth = pdf.internal.pageSize.getWidth();
