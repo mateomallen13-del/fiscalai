@@ -3,17 +3,19 @@
 import { useState } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { generatePDF } from "@/lib/pdf/generate-report";
+import { generatePDF, type PdfData } from "@/lib/pdf/generate-report";
 import { useBranding } from "@/hooks/use-branding";
 import { toast } from "sonner";
 
 interface PdfExportButtonProps {
+  data: PdfData;
   filename?: string;
   reportTitle?: string;
   clientName?: string;
 }
 
 export function PdfExportButton({
+  data,
   filename = "simulation-fiscalai.pdf",
   reportTitle,
   clientName,
@@ -25,15 +27,9 @@ export function PdfExportButton({
     e.preventDefault();
     e.stopPropagation();
 
-    const element = document.getElementById("results-panel");
-    if (!element) {
-      toast.error("Aucun résultat à exporter.");
-      return;
-    }
-
     setLoading(true);
     try {
-      await generatePDF(element, filename, {
+      await generatePDF(data, filename, {
         branding,
         clientName,
         reportTitle,

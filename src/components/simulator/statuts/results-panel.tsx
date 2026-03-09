@@ -69,6 +69,7 @@ export function StatutsResultsPanel({
           resultData={result}
         />
         <PdfExportButton
+          data={{ type: "comparateur_statuts", result }}
           reportTitle="Comparaison des Statuts Juridiques"
           filename="comparateur-statuts-fiscalai.pdf"
         />

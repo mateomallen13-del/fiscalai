@@ -95,6 +95,7 @@ export function IsIrResultsPanel({
           resultData={result}
         />
         <PdfExportButton
+          data={{ type: "is_vs_ir", result }}
           reportTitle="Simulation IS vs IR — Projection 3 ans"
           filename="simulation-is-vs-ir-fiscalai.pdf"
         />

@@ -72,6 +72,7 @@ export function ResultsPanel({ input, result, loading, isValid }: ResultsPanelPr
           resultData={result}
         />
         <PdfExportButton
+          data={{ type: "remuneration", result }}
           reportTitle="Simulation Rémunération Dirigeant"
           filename="simulation-remuneration-fiscalai.pdf"
         />
