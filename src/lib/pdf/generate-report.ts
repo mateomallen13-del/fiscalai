@@ -24,90 +24,35 @@ export async function generatePDF(
   filename: string = "simulation-fiscalai.pdf",
   options: PdfOptions = {}
 ) {
-  const html2canvas = (await import("html2canvas")).default;
-  const { jsPDF } = await import("jspdf");
+  // Dynamic imports
+  const [html2canvasModule, jspdfModule] = await Promise.all([
+    import("html2canvas"),
+    import("jspdf"),
+  ]);
+  const html2canvas = html2canvasModule.default;
+  const { jsPDF } = jspdfModule;
 
   const { branding, clientName, reportTitle } = options;
   const accentColor = branding?.accentColor ?? "#2563eb";
   const [ar, ag, ab] = hexToRgb(accentColor);
 
-  // Clone the element so we don't mutate React's live DOM
-  const clone = element.cloneNode(true) as HTMLElement;
-  clone.style.position = "absolute";
-  clone.style.left = "-9999px";
-  clone.style.top = "0";
-  clone.style.width = `${element.offsetWidth}px`;
-  document.body.appendChild(clone);
-
-  // Convert SVG elements to canvas in the clone (Recharts uses SVG)
-  const svgElements = clone.querySelectorAll("svg");
-  for (const svg of svgElements) {
-    try {
-      // Use the original element's matching SVG for dimensions
-      const origSvgs = element.querySelectorAll("svg");
-      let svgRect: DOMRect | null = null;
-      for (const origSvg of origSvgs) {
-        if (origSvg.getAttribute("class") === svg.getAttribute("class")) {
-          svgRect = origSvg.getBoundingClientRect();
-          break;
-        }
-      }
-      if (!svgRect) {
-        svgRect = svg.getBoundingClientRect();
-      }
-      if (svgRect.width === 0 || svgRect.height === 0) continue;
-
-      const svgCanvas = document.createElement("canvas");
-      svgCanvas.width = svgRect.width * 2;
-      svgCanvas.height = svgRect.height * 2;
-      svgCanvas.style.width = `${svgRect.width}px`;
-      svgCanvas.style.height = `${svgRect.height}px`;
-
-      const ctx = svgCanvas.getContext("2d");
-      if (!ctx) continue;
-
-      ctx.scale(2, 2);
-
-      // Set explicit dimensions on the SVG for proper rendering
-      svg.setAttribute("width", String(svgRect.width));
-      svg.setAttribute("height", String(svgRect.height));
-
-      const svgData = new XMLSerializer().serializeToString(svg);
-      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-      const svgUrl = URL.createObjectURL(svgBlob);
-
-      const img = new Image();
-      await new Promise<void>((resolve) => {
-        img.onload = () => {
-          ctx.drawImage(img, 0, 0, svgRect!.width, svgRect!.height);
-          URL.revokeObjectURL(svgUrl);
-          resolve();
-        };
-        img.onerror = () => {
-          URL.revokeObjectURL(svgUrl);
-          resolve();
-        };
-        img.src = svgUrl;
-      });
-
-      if (svg.parentNode) {
-        svg.parentNode.replaceChild(svgCanvas, svg);
-      }
-    } catch {
-      // If SVG conversion fails, html2canvas will try its best
-    }
-  }
-
-  const canvas = await html2canvas(clone, {
+  // Capture the element - simple and direct, no DOM mutation
+  const canvas = await html2canvas(element, {
     scale: 2,
     useCORS: true,
+    allowTaint: true,
     logging: false,
     backgroundColor: "#ffffff",
-    foreignObjectRendering: false,
+    windowWidth: element.scrollWidth,
+    windowHeight: element.scrollHeight,
   });
 
-  // Remove the clone from the DOM
-  document.body.removeChild(clone);
+  const imgWidth = canvas.width;
+  const imgHeight = canvas.height;
+
+  if (imgWidth === 0 || imgHeight === 0) {
+    throw new Error("Canvas has zero dimensions");
+  }
 
   const pdf = new jsPDF("p", "mm", "a4");
   const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -115,15 +60,11 @@ export async function generatePDF(
   const margin = 12;
   const contentWidth = pdfWidth - margin * 2;
 
-  // --- HEADER HEIGHT CALCULATION ---
   const headerHeight = 28;
   const footerHeight = 14;
   const contentTop = margin + headerHeight + 4;
   const usableHeight = pdfHeight - contentTop - footerHeight;
 
-  // --- RENDER CONTENT ---
-  const imgWidth = canvas.width;
-  const imgHeight = canvas.height;
   const ratio = contentWidth / imgWidth;
   const pageContentHeightPx = usableHeight / ratio;
 
@@ -134,7 +75,6 @@ export async function generatePDF(
     if (pageNumber > 0) pdf.addPage();
     pageNumber++;
 
-    // Draw header on each page
     drawHeader(pdf, {
       pdfWidth,
       margin,
@@ -146,13 +86,14 @@ export async function generatePDF(
       headerHeight,
     });
 
-    // Draw content slice
     const remainingHeight = imgHeight - yPosition;
     const sliceHeight = Math.min(pageContentHeightPx, remainingHeight);
 
+    if (sliceHeight <= 0) break;
+
     const pageCanvas = document.createElement("canvas");
     pageCanvas.width = imgWidth;
-    pageCanvas.height = sliceHeight;
+    pageCanvas.height = Math.ceil(sliceHeight);
     const ctx = pageCanvas.getContext("2d");
     if (ctx) {
       ctx.drawImage(
@@ -164,7 +105,7 @@ export async function generatePDF(
         0,
         0,
         imgWidth,
-        sliceHeight
+        Math.ceil(sliceHeight)
       );
     }
 
@@ -180,7 +121,6 @@ export async function generatePDF(
       pageScaledHeight
     );
 
-    // Draw footer on each page
     drawFooter(pdf, {
       pdfWidth,
       pdfHeight,
